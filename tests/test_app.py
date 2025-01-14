@@ -93,6 +93,21 @@ def test_update_user(client, user, token):
     }
 
 
+def test_update_user_without_permission(client, user, token):
+    response = client.put(
+        f'/users/{user.id + 1}',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'username': 'bob',
+            'email': 'bob@example.com',
+            'password': 'mynewpassword',
+        },
+    )
+
+    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert response.json() == {'detail': 'Not enough permissions'}
+
+
 def test_update_integrity_error(client, user, token):
     # Inserindo fausto
     client.post(
@@ -119,20 +134,6 @@ def test_update_integrity_error(client, user, token):
     assert response_update.json() == {
         'detail': 'Username or Email already exists'
     }
-
-
-# def test_update_user_should_return_not_found(client):
-#     response = client.put(
-#         '/users/666',
-#         json={
-#             'username': 'aloca',
-#             'email': 'aloca@example.com',
-#             'password': 'mynewpassword',
-#         },
-#     )
-
-#     assert response.status_code == HTTPStatus.NOT_FOUND
-#     assert response.json() == {'detail': 'User not found'}
 
 
 def test_get_user(client, user):
@@ -162,11 +163,13 @@ def test_delete_user(client, user, token):
     assert response.json() == {'message': 'User deleted'}
 
 
-# def test_delete_user_should_return_not_found(client):
-#     response = client.delete('/users/666')
-
-#     assert response.status_code == HTTPStatus.NOT_FOUND
-#     assert response.json() == {'detail': 'User not found'}
+def test_delete_user_without_permissions(client, user, token):
+    response = client.delete(
+        f'/users/{user.id + 1}',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert response.json() == {'detail': 'Not enough permissions'}
 
 
 def test_get_token(client, user):
@@ -179,3 +182,23 @@ def test_get_token(client, user):
     assert response.status_code == HTTPStatus.OK
     assert 'access_token' in token
     assert 'token_type' in token
+
+
+def test_get_token_with_invalid_email(client, user):
+    response = client.post(
+        '/token',
+        data={'username': '123123123', 'password': user.password},
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.json() == {'detail': 'Incorrect email or password'}
+
+
+def test_get_token_with_invalid_password(client, user):
+    response = client.post(
+        '/token',
+        data={'username': user.email, 'password': '1231233123'},
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.json() == {'detail': 'Incorrect email or password'}

@@ -79,9 +79,9 @@ def test_update_user(client, user, token):
     }
 
 
-def test_update_user_without_permission(client, user, token):
+def test_update_user_without_permission(client, other_user, token):
     response = client.put(
-        f'/users/{user.id + 1}',
+        f'/users/{other_user.id}',
         headers={'Authorization': f'Bearer {token}'},
         json={
             'username': 'bob',
@@ -123,14 +123,11 @@ def test_update_integrity_error(client, user, token):
 
 
 def test_get_user(client, user):
-    response = client.get('/users/1')
+    user_schema = UserPublic.model_validate(user).model_dump()
+    response = client.get(f'/users/{user.id}')
 
     assert response.status_code == HTTPStatus.OK
-    assert response.json() == {
-        'username': 'Teste',
-        'email': 'teste@test.com',
-        'id': 1,
-    }
+    assert response.json() == user_schema
 
 
 def test_get_user_should_return_not_found(client):
@@ -149,9 +146,9 @@ def test_delete_user(client, user, token):
     assert response.json() == {'message': 'User deleted'}
 
 
-def test_delete_user_without_permissions(client, user, token):
+def test_delete_user_without_permissions(client, other_user, token):
     response = client.delete(
-        f'/users/{user.id + 1}',
+        f'/users/{other_user.id}',
         headers={'Authorization': f'Bearer {token}'},
     )
     assert response.status_code == HTTPStatus.FORBIDDEN
